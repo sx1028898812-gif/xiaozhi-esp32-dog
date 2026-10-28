@@ -1,0 +1,67 @@
+name: Build ZFSN Robot Dog (6.0 Full Edition)
+
+on:
+  workflow_dispatch:
+    inputs:
+      language:
+        description: "固件语言 (Firmware Language)"
+        required: true
+        default: "zh-CN"
+        type: choice
+        options:
+          - zh-CN
+          - zh-TW
+          - en-US
+      wake_word:
+        description: "唤醒词模型 (Wake Word Model)"
+        required: true
+        default: "nihaoxiaozhi"
+        type: string
+  push:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  build-dog:
+    name: Build zfsn-esp32s3-dog (zh-CN)
+    runs-on: ubuntu-latest
+    container:
+      image: espressif/idf:release-v6.1
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build zfsn-esp32s3-dog firmware
+        shell: bash
+        env:
+          LANGUAGE_LOCALE: ${{ inputs.language || 'zh-CN' }}
+          WAKE_WORD_MODEL: ${{ inputs.wake_word || 'nihaoxiaozhi' }}
+        run: |
+          source "$IDF_PATH/export.sh"
+          python scripts/build.py zfsn-esp32s3-dog \
+            --name zfsn-esp32s3-dog \
+            --language "$LANGUAGE_LOCALE" \
+            --wake-word "$WAKE_WORD_MODEL" \
+            --zip
+          cp build/xiaozhi.bin build/target.bin
+          ls -lh build/merged-binary.bin build/target.bin releases/*.zip
+
+      - name: Upload Firmware Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: zfsn-esp32s3-dog-firmware-${{ inputs.language || 'zh-CN' }}
+          path: |
+            build/merged-binary.bin
+            build/target.bin
+            build/bootloader/bootloader.bin
+            build/partition_table/partition-table.bin
+            build/ota_data_initial.bin
+            build/generated_assets.bin
+            releases/*.zip
+          if-no-files-found: error
