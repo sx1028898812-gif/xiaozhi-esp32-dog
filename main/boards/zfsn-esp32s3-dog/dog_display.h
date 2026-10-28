@@ -50,8 +50,9 @@ private:
     static void AnimTaskTrampoline(void* arg);
     void AnimTaskLoop();
 
-    lv_obj_t* eye_right_ = nullptr; // square1 (+kEyeGap)
-    lv_obj_t* eye_left_ = nullptr;  // square2 (-kEyeGap)
+    lv_obj_t* eye_overlay_ = nullptr; // Full-screen overlay for eyes & fireworks
+    lv_obj_t* eye_right_ = nullptr;   // square1 (+kEyeGap)
+    lv_obj_t* eye_left_ = nullptr;    // square2 (-kEyeGap)
     lv_obj_t* firework_dots_[kFireworkParticles] = {nullptr};
 
     int cur_x1_ = kEyeGap;

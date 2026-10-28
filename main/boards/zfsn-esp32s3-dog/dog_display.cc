@@ -65,8 +65,20 @@ void DogDisplay::SetupUI() {
         DisplayLockGuard lock(this);
         auto screen = lv_screen_active();
 
+        // Full-screen overlay covering OledDisplay's default UI when in eye/firework mode
+        eye_overlay_ = lv_obj_create(screen);
+        lv_obj_set_size(eye_overlay_, width_, height_);
+        lv_obj_set_style_radius(eye_overlay_, 0, 0);
+        lv_obj_set_style_bg_color(eye_overlay_, lv_color_white(), 0);
+        lv_obj_set_style_bg_opa(eye_overlay_, LV_OPA_COVER, 0);
+        lv_obj_set_style_border_width(eye_overlay_, 0, 0);
+        lv_obj_set_style_pad_all(eye_overlay_, 0, 0);
+        lv_obj_set_scrollbar_mode(eye_overlay_, LV_SCROLLBAR_MODE_OFF);
+        lv_obj_align(eye_overlay_, LV_ALIGN_CENTER, 0, 0);
+        lv_obj_add_flag(eye_overlay_, LV_OBJ_FLAG_HIDDEN);
+
         // Create twin rounded-square eyes (LVGL 9 monochrome: lv_color_black() = lit pixel)
-        eye_right_ = lv_obj_create(screen);
+        eye_right_ = lv_obj_create(eye_overlay_);
         lv_obj_set_size(eye_right_, kEyeSize, kEyeSize);
         lv_obj_set_style_radius(eye_right_, kEyeRadius, 0);
         lv_obj_set_style_bg_color(eye_right_, lv_color_black(), 0);
@@ -77,7 +89,7 @@ void DogDisplay::SetupUI() {
         lv_obj_align(eye_right_, LV_ALIGN_CENTER, kEyeGap, 0);
         lv_obj_add_flag(eye_right_, LV_OBJ_FLAG_HIDDEN);
 
-        eye_left_ = lv_obj_create(screen);
+        eye_left_ = lv_obj_create(eye_overlay_);
         lv_obj_set_size(eye_left_, kEyeSize, kEyeSize);
         lv_obj_set_style_radius(eye_left_, kEyeRadius, 0);
         lv_obj_set_style_bg_color(eye_left_, lv_color_black(), 0);
@@ -90,7 +102,7 @@ void DogDisplay::SetupUI() {
 
         // Create firework particle dots
         for (int i = 0; i < kFireworkParticles; i++) {
-            firework_dots_[i] = lv_obj_create(screen);
+            firework_dots_[i] = lv_obj_create(eye_overlay_);
             lv_obj_set_size(firework_dots_[i], 4, 4);
             lv_obj_set_style_radius(firework_dots_[i], 2, 0);
             lv_obj_set_style_bg_color(firework_dots_[i], lv_color_black(), 0);
@@ -107,6 +119,13 @@ void DogDisplay::SetupUI() {
 }
 
 void DogDisplay::ApplyVisibilityLocked(bool show_eyes, bool show_ui, bool show_fireworks) {
+    if (eye_overlay_) {
+        if (show_ui && !show_eyes && !show_fireworks) {
+            lv_obj_add_flag(eye_overlay_, LV_OBJ_FLAG_HIDDEN);
+        } else {
+            lv_obj_remove_flag(eye_overlay_, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
     if (eye_right_ && eye_left_) {
         if (show_eyes) {
             lv_obj_remove_flag(eye_right_, LV_OBJ_FLAG_HIDDEN);
@@ -114,20 +133,6 @@ void DogDisplay::ApplyVisibilityLocked(bool show_eyes, bool show_ui, bool show_f
         } else {
             lv_obj_add_flag(eye_right_, LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(eye_left_, LV_OBJ_FLAG_HIDDEN);
-        }
-    }
-    if (container_) {
-        if (show_ui) {
-            lv_obj_remove_flag(container_, LV_OBJ_FLAG_HIDDEN);
-        } else {
-            lv_obj_add_flag(container_, LV_OBJ_FLAG_HIDDEN);
-        }
-    }
-    if (status_bar_) {
-        if (show_ui) {
-            lv_obj_remove_flag(status_bar_, LV_OBJ_FLAG_HIDDEN);
-        } else {
-            lv_obj_add_flag(status_bar_, LV_OBJ_FLAG_HIDDEN);
         }
     }
     for (int i = 0; i < kFireworkParticles; i++) {
@@ -187,11 +192,13 @@ void DogDisplay::SetChatMessage(const char* role, const char* content) {
 }
 
 void DogDisplay::ShowNotification(const char* notification, int duration_ms) {
-    // Keep status_bar_ visible briefly so volume/mode notifications can be seen even in eye mode
     {
         DisplayLockGuard lock(this);
-        if (status_bar_) {
-            lv_obj_remove_flag(status_bar_, LV_OBJ_FLAG_HIDDEN);
+        if (notification_label_) {
+            lv_obj_t* status_bar = lv_obj_get_parent(notification_label_);
+            if (status_bar) {
+                lv_obj_move_foreground(status_bar);
+            }
         }
     }
     OledDisplay::ShowNotification(notification, duration_ms);

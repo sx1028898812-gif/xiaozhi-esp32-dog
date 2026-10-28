@@ -24,26 +24,20 @@ WS2812Led::~WS2812Led() {
 }
 
 void WS2812Led::InitStrips() {
-    led_strip_config_t strip_config1 = {
-        .strip_gpio_num = WS2812_STRIP1_GPIO,
-        .max_leds = WS2812_LED_MAX_NUMBERS,
-        .led_pixel_format = LED_PIXEL_FORMAT_GRB,
-        .led_model = LED_MODEL_WS2812,
-        .flags = { .invert_out = false },
-    };
-    led_strip_config_t strip_config2 = {
-        .strip_gpio_num = WS2812_STRIP2_GPIO,
-        .max_leds = WS2812_LED_MAX_NUMBERS,
-        .led_pixel_format = LED_PIXEL_FORMAT_GRB,
-        .led_model = LED_MODEL_WS2812,
-        .flags = { .invert_out = false },
-    };
-    led_strip_rmt_config_t rmt_config = {
-        .clk_src = RMT_CLK_SRC_DEFAULT,
-        .resolution_hz = 10 * 1000 * 1000, // 10MHz
-        .mem_block_symbols = 0,
-        .flags = { .with_dma = false },
-    };
+    led_strip_config_t strip_config1 = {};
+    strip_config1.strip_gpio_num = WS2812_STRIP1_GPIO;
+    strip_config1.max_leds = WS2812_LED_MAX_NUMBERS;
+    strip_config1.color_component_format = LED_STRIP_COLOR_COMPONENT_FMT_GRB;
+    strip_config1.led_model = LED_MODEL_WS2812;
+
+    led_strip_config_t strip_config2 = {};
+    strip_config2.strip_gpio_num = WS2812_STRIP2_GPIO;
+    strip_config2.max_leds = WS2812_LED_MAX_NUMBERS;
+    strip_config2.color_component_format = LED_STRIP_COLOR_COMPONENT_FMT_GRB;
+    strip_config2.led_model = LED_MODEL_WS2812;
+
+    led_strip_rmt_config_t rmt_config = {};
+    rmt_config.resolution_hz = 10 * 1000 * 1000; // 10MHz
 
     ESP_ERROR_CHECK(led_strip_new_rmt_device(&strip_config1, &rmt_config, &strip1_));
     ESP_ERROR_CHECK(led_strip_new_rmt_device(&strip_config2, &rmt_config, &strip2_));
