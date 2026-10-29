@@ -101,6 +101,7 @@ void PetDog::InitPwm() {
 
 // Channel 0: Right Back (GPIO 14) - physically mirrored (180 - angle)
 void PetDog::SetRightBackAngle(int angle) {
+    cur_rb_ = angle;
     int adjusted = std::clamp(angle + trim_rb_, 0, 180);
     uint32_t duty = AngleToDuty(180 - adjusted);
     ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty);
@@ -109,6 +110,7 @@ void PetDog::SetRightBackAngle(int angle) {
 
 // Channel 1: Left Front (GPIO 17) - direct angle
 void PetDog::SetLeftFrontAngle(int angle) {
+    cur_lf_ = angle;
     int adjusted = std::clamp(angle + trim_lf_, 0, 180);
     uint32_t duty = AngleToDuty(adjusted);
     ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, duty);
@@ -117,6 +119,7 @@ void PetDog::SetLeftFrontAngle(int angle) {
 
 // Channel 2: Right Front (GPIO 13) - physically mirrored (180 - angle)
 void PetDog::SetRightFrontAngle(int angle) {
+    cur_rf_ = angle;
     int adjusted = std::clamp(angle + trim_rf_, 0, 180);
     uint32_t duty = AngleToDuty(180 - adjusted);
     ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_2, duty);
@@ -125,6 +128,7 @@ void PetDog::SetRightFrontAngle(int angle) {
 
 // Channel 3: Left Back (GPIO 18) - direct angle
 void PetDog::SetLeftBackAngle(int angle) {
+    cur_lb_ = angle;
     int adjusted = std::clamp(angle + trim_lb_, 0, 180);
     uint32_t duty = AngleToDuty(adjusted);
     ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3, duty);
@@ -202,6 +206,26 @@ void PetDog::Jump() {
     QueueAction({DogActionType::kJump, 1, 0, 0, 0, 0, 0, 0, true}, false);
 }
 
+void PetDog::Surprised() {
+    QueueAction({DogActionType::kSurprised, 1, 0, 0, 0, 0, 0, 0, true}, false);
+}
+
+void PetDog::Sleepy() {
+    QueueAction({DogActionType::kSleepy, 1, 0, 0, 0, 0, 0, 0, false}, false);
+}
+
+void PetDog::PlayBow() {
+    QueueAction({DogActionType::kPlayBow, 1, 0, 0, 0, 0, 0, 0, true}, false);
+}
+
+void PetDog::Crying() {
+    QueueAction({DogActionType::kCrying, 1, 0, 0, 0, 0, 0, 0, true}, false);
+}
+
+void PetDog::AngryStomp() {
+    QueueAction({DogActionType::kAngryStomp, 1, 0, 0, 0, 0, 0, 0, true}, false);
+}
+
 void PetDog::Stop() {
     xEventGroupSetBits(event_group_, STOP_ACTION_BIT);
     xQueueReset(action_queue_);
@@ -214,6 +238,8 @@ void PetDog::ExecuteRandomAction() {
         DogActionType::kSwing,
         DogActionType::kStretch,
         DogActionType::kScratching,
+        DogActionType::kPlayBow,
+        DogActionType::kSurprised,
         DogActionType::kJump,
         DogActionType::kSitdown,
         DogActionType::kWalkForward,
@@ -224,6 +250,8 @@ void PetDog::ExecuteRandomAction() {
         case DogActionType::kSwing:       Swing(4, 30); break;
         case DogActionType::kStretch:     Stretch(); break;
         case DogActionType::kScratching:  Scratching(); break;
+        case DogActionType::kPlayBow:     PlayBow(); break;
+        case DogActionType::kSurprised:   Surprised(); break;
         case DogActionType::kJump:        Jump(); break;
         case DogActionType::kSitdown:     Sitdown(); break;
         case DogActionType::kWalkForward: WalkForward(2); break;
@@ -355,6 +383,38 @@ bool PetDog::ToggleEmotionSync() {
     return emotion_sync_;
 }
 
+// 50Hz Cosine Ease-in-out Smooth Motion Engine
+bool PetDog::MoveTo(int target_lf, int target_rf, int target_lb, int target_rb, int duration_ms) {
+    if (duration_ms <= 0) duration_ms = 20;
+    int steps = duration_ms / 20;
+    if (steps < 1) steps = 1;
+
+    int start_lf = cur_lf_;
+    int start_rf = cur_rf_;
+    int start_lb = cur_lb_;
+    int start_rb = cur_rb_;
+
+    for (int i = 1; i <= steps; ++i) {
+        float progress = static_cast<float>(i) / steps;
+        float ease = 0.5f * (1.0f - cosf(progress * 3.14159265f));
+
+        int lf = std::round(start_lf + (target_lf - start_lf) * ease);
+        int rf = std::round(start_rf + (target_rf - start_rf) * ease);
+        int lb = std::round(start_lb + (target_lb - start_lb) * ease);
+        int rb = std::round(start_rb + (target_rb - start_rb) * ease);
+
+        SetLeftFrontAngle(lf);
+        SetRightFrontAngle(rf);
+        SetLeftBackAngle(lb);
+        SetRightBackAngle(rb);
+
+        if (WaitOrStop(20)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 void PetDog::ActionTaskTrampoline(void* arg) {
     static_cast<PetDog*>(arg)->ActionTaskLoop();
 }
@@ -407,6 +467,21 @@ void PetDog::ActionTaskLoop() {
                 case DogActionType::kJump:
                     RunJump();
                     break;
+                case DogActionType::kSurprised:
+                    RunSurprised();
+                    break;
+                case DogActionType::kSleepy:
+                    RunSleepy();
+                    break;
+                case DogActionType::kPlayBow:
+                    RunPlayBow();
+                    break;
+                case DogActionType::kCrying:
+                    RunCrying();
+                    break;
+                case DogActionType::kAngryStomp:
+                    RunAngryStomp();
+                    break;
                 case DogActionType::kCustomKeyframe:
                     SetLeftFrontAngle(params.lf);
                     SetRightFrontAngle(params.rf);
@@ -458,6 +533,62 @@ void PetDog::RunSleep() {
     }
 }
 
+// Option A: Silky Smooth Melt into Sleep
+void PetDog::RunSleepy() {
+    // Stage 1: Slight forward droop / drowsy nod
+    if (!MoveTo(108, 108, 90, 90, 500)) return;
+    // Stage 2: Rear butt sinks forward first
+    if (!MoveTo(108, 108, 0, 0, 600)) return;
+    // Stage 3: Front legs fold backward and melt flat onto ground
+    if (!MoveTo(180, 180, 0, 0, 700)) return;
+    current_posture_ = DogActionType::kSleep;
+    // Rest for 3 seconds before torque release
+    if (WaitOrStop(3000)) return;
+    ReleaseServos();
+}
+
+// Surprised: 45° outward splay fast drop -> shock freeze -> smooth recovery
+void PetDog::RunSurprised() {
+    if (!MoveTo(45, 45, 135, 135, 120)) return;
+    if (WaitOrStop(1400)) return;
+    MoveTo(90, 90, 90, 90, 800);
+    current_posture_ = DogActionType::kStand;
+}
+
+// Play Bow (嬉笑/邀玩下犬式): Chest down, hips high, wiggle butt
+void PetDog::RunPlayBow() {
+    if (!MoveTo(30, 30, 95, 95, 400)) return;
+    for (int i = 0; i < 2; ++i) {
+        if (!MoveTo(30, 30, 80, 110, 200)) return;
+        if (!MoveTo(30, 30, 110, 80, 200)) return;
+    }
+    MoveTo(90, 90, 90, 90, 400);
+    current_posture_ = DogActionType::kStand;
+}
+
+// Crying (委屈抽泣): Inward slump, shivering tremor, slow rise
+void PetDog::RunCrying() {
+    if (!MoveTo(125, 125, 30, 30, 500)) return;
+    for (int i = 0; i < 3; ++i) {
+        if (!MoveTo(120, 120, 35, 35, 120)) return;
+        if (!MoveTo(125, 125, 30, 30, 120)) return;
+    }
+    MoveTo(90, 90, 90, 90, 900);
+    current_posture_ = DogActionType::kStand;
+}
+
+// Angry Stomp (生气跺脚): alternate front paw stomping
+void PetDog::RunAngryStomp() {
+    for (int i = 0; i < 2; ++i) {
+        if (!MoveTo(50, 90, 90, 90, 140)) return;
+        if (!MoveTo(90, 90, 90, 90, 100)) return;
+        if (!MoveTo(90, 50, 90, 90, 140)) return;
+        if (!MoveTo(90, 90, 90, 90, 100)) return;
+    }
+    current_posture_ = DogActionType::kStand;
+}
+
+// Original 6.0 Gaits (Unchanged)
 void PetDog::RunWalkForward(int steps) {
     RunStand();
     if (WaitOrStop(80)) return;
@@ -612,7 +743,6 @@ void PetDog::RunSwing(int steps, int angle) {
         SetRightBackAngle(i);
         if (WaitOrStop(6)) return;
     }
-    // Fixed 2.1 bug: actually use 'steps' for the number of swing cycles
     for (int temp = 0; temp < steps; temp++) {
         for (int i = 90 - amp; i < 90 + amp; i += 2) {
             SetLeftFrontAngle(i);
@@ -649,7 +779,6 @@ void PetDog::RunPetWave() {
 }
 
 void PetDog::RunJump() {
-    // Prepare crouch -> explosive extension -> land -> stand
     SetLeftFrontAngle(60);
     SetRightFrontAngle(60);
     SetLeftBackAngle(45);
@@ -665,4 +794,3 @@ void PetDog::RunJump() {
     RunStand();
     if (WaitOrStop(150)) return;
 }
-

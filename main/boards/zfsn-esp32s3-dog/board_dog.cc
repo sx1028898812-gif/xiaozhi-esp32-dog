@@ -40,7 +40,7 @@ public:
                     disp->EnterSleepingEyes();
                 }
                 if (!dog.IsBusy() && dog.GetCurrentPosture() != DogActionType::kSleep) {
-                    dog.Sleep();
+                    dog.Sleepy();
                 }
                 break;
 
@@ -152,6 +152,13 @@ private:
         //    - Speaking -> Interrupt AI speech immediately
         //    - Listening-> Close audio channel & rest
         boot_button_.OnClick([this]() {
+            // Priority 1: Emergency Stop! Tapping head while moving immediately halts
+            if (PetDog::GetInstance().IsBusy()) {
+                ESP_LOGI(TAG, "Touch head emergency stop while dog is busy");
+                PetDog::GetInstance().Stop();
+                return;
+            }
+
             auto& app = Application::GetInstance();
             auto state = app.GetDeviceState();
             if (state == kDeviceStateStarting) {
@@ -256,6 +263,11 @@ private:
             "sitdown: 坐下/蹲下\n"
             "stand: 站立/立正\n"
             "sleep: 趴下睡觉休息\n"
+            "sleepy: 犯困打哈欠入睡（丝滑趴下）\n"
+            "surprised: 惊讶防守（四肢外八震颤后慢起）\n"
+            "play_bow: 嬉笑邀玩（下犬式前胸贴地翘臀摇尾）\n"
+            "crying: 难过委屈抽泣\n"
+            "angry_stomp: 生气跺脚踏步\n"
             "stretch: 伸懒腰\n"
             "scratching: 挠痒痒\n"
             "swing: 摇摆身体/开心摇晃（可指定 steps 次数和 angle 幅度）\n"
@@ -288,6 +300,16 @@ private:
                     dog.Stand();
                 } else if (action == "sleep") {
                     dog.Sleep();
+                } else if (action == "sleepy") {
+                    dog.Sleepy();
+                } else if (action == "surprised") {
+                    dog.Surprised();
+                } else if (action == "play_bow") {
+                    dog.PlayBow();
+                } else if (action == "crying") {
+                    dog.Crying();
+                } else if (action == "angry_stomp") {
+                    dog.AngryStomp();
                 } else if (action == "stretch") {
                     dog.Stretch();
                 } else if (action == "scratching") {

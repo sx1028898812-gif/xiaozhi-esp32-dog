@@ -2,6 +2,8 @@
 #define _DOG_DISPLAY_H_
 
 #include "display/oled_display.h"
+#include "display/lvgl_display/gif/lvgl_gif.h"
+#include "dog_gifs.h"
 #include "pet_dog.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -9,12 +11,13 @@
 #include <atomic>
 #include <mutex>
 #include <string>
+#include <memory>
 
 enum class DogEyeMode {
     kNormalUI = 0,     // Standard OLED UI (Initialization, Activation Code, WiFi Config, Alerts)
-    kAnimatedEyes,     // Lively blinking & gazing twin eyes (Listening & Speaking)
-    kSleepingEyes,     // Half-closed resting eyes (Idle standby)
-    kFireworkEffect,   // Celebration firework particle burst
+    kAnimatedEyes,     // Authentic 6.0 GIF Animation (Listening, Speaking, Idle)
+    kSleepingEyes,     // Authentic 6.0 sleeping.gif
+    kFireworkEffect,   // Authentic 6.0 firework.gif
 };
 
 class DogDisplay : public OledDisplay {
@@ -35,44 +38,29 @@ public:
     void ShowFirework();
     void SyncWithAction(DogActionType action);
 
-private:
-    static constexpr int kEyeSize = 40;
-    static constexpr int kEyeGap = 25;
-    static constexpr int kEyeRadius = 10;
-    static constexpr int kFireworkParticles = 12;
+    // Play specific 6.0 GIF by name ("blink", "happy", "sleeping", etc.)
+    bool PlayGif(const char* gif_name);
 
-    void ApplyVisibilityLocked(bool show_eyes, bool show_ui, bool show_fireworks = false);
-    void MoveEyesSmooth(int target_x1, int target_y1, int target_x2, int target_y2);
-    void CloseEyesSmooth();
-    void OpenEyesSmooth(int target_height = kEyeSize, int target_width = kEyeSize, int radius = kEyeRadius);
-    void BlinkOnce();
-    void RunFireworkAnimation();
+private:
+    void PlayGifInternalLocked(const DogGifAsset* asset);
+    void ApplyVisibilityLocked(bool show_gif, bool show_ui);
     bool WaitInterruptible(int ms);
 
     static void AnimTaskTrampoline(void* arg);
     void AnimTaskLoop();
 
-    lv_obj_t* eye_overlay_ = nullptr; // Full-screen overlay for eyes & fireworks
-    lv_obj_t* eye_right_ = nullptr;   // square1 (+kEyeGap)
-    lv_obj_t* eye_left_ = nullptr;    // square2 (-kEyeGap)
-    lv_obj_t* firework_dots_[kFireworkParticles] = {nullptr};
-
-    int cur_x1_ = kEyeGap;
-    int cur_y1_ = 0;
-    int cur_x2_ = -kEyeGap;
-    int cur_y2_ = 0;
+    lv_obj_t* gif_image_ = nullptr;
+    std::unique_ptr<LvglGif> gif_controller_ = nullptr;
+    lv_image_dsc_t current_gif_dsc_ = {};
 
     std::mutex mode_mutex_;
     DogEyeMode current_mode_ = DogEyeMode::kNormalUI;
     DogEyeMode return_mode_after_firework_ = DogEyeMode::kAnimatedEyes;
-    std::string current_emotion_ = "neutral";
-    int forced_gaze_dx_ = 0;
-    int forced_gaze_dy_ = 0;
-    bool has_forced_gaze_ = false;
+    std::string current_emotion_ = "blink";
+    bool custom_emotion_active_ = false;
 
     EventGroupHandle_t event_group_ = nullptr;
     TaskHandle_t anim_task_handle_ = nullptr;
 };
 
 #endif // _DOG_DISPLAY_H_
-

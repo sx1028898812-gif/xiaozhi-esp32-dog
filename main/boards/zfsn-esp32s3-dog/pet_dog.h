@@ -24,6 +24,11 @@ enum class DogActionType {
     kSwing,
     kPetWave,
     kJump,
+    kSurprised,
+    kSleepy,
+    kPlayBow,
+    kCrying,
+    kAngryStomp,
     kCustomKeyframe,
 };
 
@@ -50,7 +55,7 @@ public:
     PetDog(const PetDog&) = delete;
     PetDog& operator=(const PetDog&) = delete;
 
-    // 13 Standard Actions (compatible with 2.1 and 6.0 MCP schema)
+    // Standard 6.0 Gaits & Postures
     void Stand();
     void Sitdown();
     void Sleep();
@@ -64,6 +69,13 @@ public:
     void PetWave();
     void Jump();
     void Stop();
+
+    // New 6.0 Silky Smooth Emotion Actions (Cosine Eased)
+    void Surprised();
+    void Sleepy();
+    void PlayBow();
+    void Crying();
+    void AngryStomp();
 
     // Random interactive action (for head touch long-press & idle free-explore)
     void ExecuteRandomAction();
@@ -110,6 +122,9 @@ private:
     void QueueAction(const DogActionParams& params, bool clear_existing = false);
     bool WaitOrStop(int duration_ms);
 
+    // Silky Smooth Interpolation (50Hz Ease-in-out cosine trajectory)
+    bool MoveTo(int target_lf, int target_rf, int target_lb, int target_rb, int duration_ms);
+
     // Internal synchronous execution routines run inside ActionTask
     void RunStand();
     void RunSitdown();
@@ -124,6 +139,13 @@ private:
     void RunPetWave();
     void RunJump();
 
+    // New 6.0 Silky Smooth Emotion Handlers
+    void RunSurprised();
+    void RunSleepy();
+    void RunPlayBow();
+    void RunCrying();
+    void RunAngryStomp();
+
     static void ActionTaskTrampoline(void* arg);
     void ActionTaskLoop();
 
@@ -133,6 +155,12 @@ private:
 
     bool is_busy_ = false;
     DogActionType current_posture_ = DogActionType::kStand;
+
+    // Current calibrated joint angles (degrees: 0=Fwd, 90=Down, 180=Back)
+    int cur_lf_ = 90;
+    int cur_rf_ = 90;
+    int cur_lb_ = 90;
+    int cur_rb_ = 90;
 
     // Servo Trim Offsets (degrees)
     int trim_lf_ = 0;
@@ -149,4 +177,3 @@ private:
 };
 
 #endif // _PET_DOG_H_
-
