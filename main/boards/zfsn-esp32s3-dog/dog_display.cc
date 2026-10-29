@@ -54,15 +54,9 @@ void DogDisplay::ApplyVisibilityLocked(bool show_gif, bool show_ui) {
     if (gif_image_) {
         if (show_gif) {
             lv_obj_remove_flag(gif_image_, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_move_foreground(gif_image_);
         } else {
             lv_obj_add_flag(gif_image_, LV_OBJ_FLAG_HIDDEN);
-        }
-    }
-    if (container_) {
-        if (show_ui) {
-            lv_obj_remove_flag(container_, LV_OBJ_FLAG_HIDDEN);
-        } else {
-            lv_obj_add_flag(container_, LV_OBJ_FLAG_HIDDEN);
         }
     }
 }
