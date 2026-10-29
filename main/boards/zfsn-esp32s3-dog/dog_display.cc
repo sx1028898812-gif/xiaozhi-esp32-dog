@@ -204,6 +204,74 @@ void DogDisplay::ShowNotification(const char* notification, int duration_ms) {
     OledDisplay::ShowNotification(notification, duration_ms);
 }
 
+void DogDisplay::SyncWithAction(DogActionType action) {
+    if (action == DogActionType::kSleep) {
+        EnterSleepingEyes();
+        return;
+    }
+    {
+        std::lock_guard<std::mutex> lock(mode_mutex_);
+        if (current_mode_ == DogEyeMode::kSleepingEyes) {
+            current_mode_ = DogEyeMode::kAnimatedEyes;
+        }
+        switch (action) {
+            case DogActionType::kTurnLeft:
+                forced_gaze_dx_ = -15;
+                forced_gaze_dy_ = 0;
+                has_forced_gaze_ = true;
+                current_emotion_ = "neutral";
+                break;
+            case DogActionType::kTurnRight:
+                forced_gaze_dx_ = 15;
+                forced_gaze_dy_ = 0;
+                has_forced_gaze_ = true;
+                current_emotion_ = "neutral";
+                break;
+            case DogActionType::kWalkForward:
+                forced_gaze_dx_ = 0;
+                forced_gaze_dy_ = -4;
+                has_forced_gaze_ = true;
+                current_emotion_ = "neutral";
+                break;
+            case DogActionType::kWalkBack:
+                forced_gaze_dx_ = 0;
+                forced_gaze_dy_ = 8;
+                has_forced_gaze_ = true;
+                current_emotion_ = "neutral";
+                break;
+            case DogActionType::kSitdown:
+                forced_gaze_dx_ = 0;
+                forced_gaze_dy_ = -6;
+                has_forced_gaze_ = true;
+                break;
+            case DogActionType::kPetWave:
+            case DogActionType::kSwing:
+                has_forced_gaze_ = false;
+                current_emotion_ = "happy";
+                break;
+            case DogActionType::kStretch:
+            case DogActionType::kScratching:
+                forced_gaze_dx_ = 0;
+                forced_gaze_dy_ = 2;
+                has_forced_gaze_ = true;
+                current_emotion_ = "happy";
+                break;
+            case DogActionType::kJump:
+                forced_gaze_dx_ = 0;
+                forced_gaze_dy_ = -8;
+                has_forced_gaze_ = true;
+                current_emotion_ = "surprised";
+                break;
+            case DogActionType::kStand:
+            default:
+                has_forced_gaze_ = false;
+                current_emotion_ = "neutral";
+                break;
+        }
+    }
+    xEventGroupSetBits(event_group_, EYE_MODE_CHANGED_BIT);
+}
+
 bool DogDisplay::SetEmotion(const char* emotion) {
     bool res = OledDisplay::SetEmotion(emotion);
     if (!emotion) {
@@ -214,27 +282,24 @@ bool DogDisplay::SetEmotion(const char* emotion) {
     {
         std::lock_guard<std::mutex> lock(mode_mutex_);
         current_emotion_ = emo;
+        has_forced_gaze_ = false;
     }
+    // Immediately wake up eye animation loop so eye shape updates without delay
+    xEventGroupSetBits(event_group_, EYE_MODE_CHANGED_BIT);
 
-    // Emotion-Action-Light 3-way Empathy Linkage (when enabled and not interrupting busy sequences)
+    // Emotion -> Limb Action Linkage (WS2812 LED is NOT auto-triggered here; LED is strictly voice-controlled)
     auto& dog = PetDog::GetInstance();
-    auto& led = WS2812Led::GetInstance();
     if (dog.GetEmotionSync() && !dog.IsBusy()) {
         if (emo == "happy" || emo == "laughing" || emo == "funny" || emo == "loving" || emo == "winking") {
             dog.Swing(3, 25);
-            led.StartRainbow(128);
         } else if (emo == "cool" || emo == "confident" || emo == "kissy") {
             dog.PetWave();
-            led.StartWater("cyan", 128);
         } else if (emo == "surprised" || emo == "shocked") {
             dog.Jump();
-            led.StartFlash("yellow", 150);
         } else if (emo == "sad" || emo == "crying" || emo == "embarrassed") {
             dog.Sitdown();
-            led.StartBreathe("blue", 80);
         } else if (emo == "sleepy") {
             dog.Sleep();
-            led.TurnOff();
         }
     }
 
@@ -375,10 +440,16 @@ void DogDisplay::AnimTaskLoop() {
     while (true) {
         DogEyeMode mode;
         std::string emotion;
+        bool forced_gaze = false;
+        int forced_dx = 0;
+        int forced_dy = 0;
         {
             std::lock_guard<std::mutex> lock(mode_mutex_);
             mode = current_mode_;
             emotion = current_emotion_;
+            forced_gaze = has_forced_gaze_;
+            forced_dx = forced_gaze_dx_;
+            forced_dy = forced_gaze_dy_;
         }
         xEventGroupClearBits(event_group_, EYE_MODE_CHANGED_BIT);
 
@@ -423,17 +494,21 @@ void DogDisplay::AnimTaskLoop() {
         }
 
         // Shape adjustment based on emotion
-        if (emotion == "happy" || emotion == "laughing" || emotion == "loving") {
-            OpenEyesSmooth(22, kEyeSize + 4, 14);
+        if (emotion == "happy" || emotion == "laughing" || emotion == "loving" || emotion == "funny") {
+            OpenEyesSmooth(20, kEyeSize + 4, 14);
         } else if (emotion == "surprised" || emotion == "shocked") {
             OpenEyesSmooth(kEyeSize + 6, kEyeSize + 4, 18);
-        } else if (emotion == "sad" || emotion == "crying") {
-            OpenEyesSmooth(24, kEyeSize - 4, 6);
+        } else if (emotion == "sad" || emotion == "crying" || emotion == "embarrassed") {
+            OpenEyesSmooth(22, kEyeSize - 4, 6);
+        } else if (emotion == "cool" || emotion == "confident" || emotion == "winking") {
+            OpenEyesSmooth(28, kEyeSize + 2, 8);
+        } else {
+            OpenEyesSmooth(kEyeSize, kEyeSize, kEyeRadius);
         }
 
-        // Random gaze offset (-14..+14 in X, -12..+12 in Y)
-        int dx = static_cast<int>(esp_random() % 29) - 14;
-        int dy = static_cast<int>(esp_random() % 25) - 12;
+        // Gaze offset: follow action direction if forced, else random (-14..+14 in X, -12..+12 in Y)
+        int dx = forced_gaze ? forced_dx : (static_cast<int>(esp_random() % 29) - 14);
+        int dy = forced_gaze ? forced_dy : (static_cast<int>(esp_random() % 25) - 12);
         MoveEyesSmooth(kEyeGap + dx, dy, -kEyeGap + dx, dy);
 
         int wait_sec = 1 + static_cast<int>(esp_random() % 3);

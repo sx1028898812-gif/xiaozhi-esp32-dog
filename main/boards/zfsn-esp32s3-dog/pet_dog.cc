@@ -366,6 +366,10 @@ void PetDog::ActionTaskLoop() {
             xEventGroupClearBits(event_group_, STOP_ACTION_BIT);
             is_busy_ = true;
 
+            if (action_callback_) {
+                action_callback_(params.type);
+            }
+
             switch (params.type) {
                 case DogActionType::kStand:
                     RunStand();
@@ -416,6 +420,12 @@ void PetDog::ActionTaskLoop() {
             }
 
             is_busy_ = (uxQueueMessagesWaiting(action_queue_) > 0);
+            if (!is_busy_ && current_posture_ == DogActionType::kStand &&
+                params.type != DogActionType::kStand) {
+                if (action_callback_) {
+                    action_callback_(DogActionType::kStand);
+                }
+            }
         }
     }
 }

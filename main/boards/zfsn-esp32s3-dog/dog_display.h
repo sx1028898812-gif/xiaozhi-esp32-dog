@@ -2,6 +2,7 @@
 #define _DOG_DISPLAY_H_
 
 #include "display/oled_display.h"
+#include "pet_dog.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/event_groups.h>
@@ -32,6 +33,7 @@ public:
     void EnterSleepingEyes();
     void EnterNormalUI();
     void ShowFirework();
+    void SyncWithAction(DogActionType action);
 
 private:
     static constexpr int kEyeSize = 40;
@@ -64,6 +66,9 @@ private:
     DogEyeMode current_mode_ = DogEyeMode::kNormalUI;
     DogEyeMode return_mode_after_firework_ = DogEyeMode::kAnimatedEyes;
     std::string current_emotion_ = "neutral";
+    int forced_gaze_dx_ = 0;
+    int forced_gaze_dy_ = 0;
+    bool has_forced_gaze_ = false;
 
     EventGroupHandle_t event_group_ = nullptr;
     TaskHandle_t anim_task_handle_ = nullptr;

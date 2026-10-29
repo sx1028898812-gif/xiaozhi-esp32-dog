@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <string>
 #include <map>
+#include <functional>
 
 enum class DogActionType {
     kStand = 0,
@@ -90,6 +91,9 @@ public:
     bool IsBusy() const { return is_busy_; }
     DogActionType GetCurrentPosture() const { return current_posture_; }
 
+    using ActionCallback = std::function<void(DogActionType)>;
+    void SetActionCallback(ActionCallback cb) { action_callback_ = std::move(cb); }
+
     // Direct angle setters (with trim compensation)
     void SetLeftFrontAngle(int angle);
     void SetRightFrontAngle(int angle);
@@ -140,6 +144,8 @@ private:
     bool free_explore_ = false;
     bool boot_animation_ = true;
     bool emotion_sync_ = true;
+
+    ActionCallback action_callback_;
 };
 
 #endif // _PET_DOG_H_

@@ -168,14 +168,13 @@ private:
         });
 
         // 2. Long Press Head Touch:
-        //    - Trigger random cute action + happy eyes + rainbow light
+        //    - Trigger random cute action + happy eyes (does NOT force WS2812 LED on)
         boot_button_.OnLongPress([this]() {
             ESP_LOGI(TAG, "Head touch long-press: triggering random pet interaction");
             if (dog_display_) {
                 dog_display_->EnterAnimatedEyes();
                 dog_display_->SetEmotion("happy");
             }
-            WS2812Led::GetInstance().StartRainbow(128);
             PetDog::GetInstance().ExecuteRandomAction();
         });
 
@@ -487,7 +486,6 @@ private:
                     dog_display_->ShowFirework();
                 }
                 if (celebrate) {
-                    WS2812Led::GetInstance().StartRainbow(160);
                     PetDog::GetInstance().Jump();
                     PetDog::GetInstance().Swing(4, 30);
                 }
@@ -504,9 +502,13 @@ public:
         InitializeDisplayI2c();
         InitializeSh1106Display();
 
-        // Trigger power-on green water-fill effect & initial posture
+        // Trigger power-on green water-fill effect (1s then off) & initial posture
         WS2812Led::GetInstance().PlayPowerOnEffect();
-        (void)PetDog::GetInstance();
+        PetDog::GetInstance().SetActionCallback([this](DogActionType action) {
+            if (dog_display_ && PetDog::GetInstance().GetEmotionSync()) {
+                dog_display_->SyncWithAction(action);
+            }
+        });
 
         InitializeButtons();
         InitializeFreeExploreTimer();
