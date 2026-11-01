@@ -32,6 +32,11 @@
 #define DISPLAY_MIRROR_Y true
 #define SH1106
 
+// 6-Axis Gyroscope / IMU (MPU6050 / QMI8658)
+// Shares the display I2C bus (SDA: GPIO 41, SCL: GPIO 42)
+#define IMU_SDA_PIN DISPLAY_SDA_PIN
+#define IMU_SCL_PIN DISPLAY_SCL_PIN
+
 // Dual WS2812 RGB LED Strips (Left & Right 8 LEDs each)
 #define WS2812_STRIP1_GPIO      GPIO_NUM_38
 #define WS2812_STRIP2_GPIO      GPIO_NUM_8

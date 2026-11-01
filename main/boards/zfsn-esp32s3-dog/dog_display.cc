@@ -135,6 +135,8 @@ bool DogDisplay::SetEmotion(const char* emotion) {
         target_gif = "blame";
     } else if (strcmp(emotion, "contempt") == 0) {
         target_gif = "contempt";
+    } else if (strcmp(emotion, "dizzy") == 0 || strcmp(emotion, "faint") == 0) {
+        target_gif = "silly";
     } else if (strcmp(emotion, "firework") == 0 || strcmp(emotion, "celebrate") == 0) {
         ShowFirework();
         return true;
@@ -248,6 +250,10 @@ void DogDisplay::SyncWithAction(DogActionType action) {
         case DogActionType::kAngryStomp:
             SetEmotion("angry");
             break;
+        case DogActionType::kDizzy:
+            SetEmotion("dizzy");
+            ShowNotification("好晕呀~ 不要摇啦! @_@");
+            break;
         case DogActionType::kStand:
             EnterAnimatedEyes();
             break;
@@ -319,8 +325,8 @@ void DogDisplay::AnimTaskLoop() {
                     current_emotion_ = "firework";
                     PlayGifInternalLocked(fw_asset);
                 }
-                // Firework plays for 6 seconds, then returns to previous mode
-                WaitInterruptible(6000);
+                // Keep the celebration visible through the full jump + swing choreography.
+                WaitInterruptible(8000);
                 {
                     std::lock_guard<std::mutex> lock(mode_mutex_);
                     current_mode_ = return_mode_after_firework_;

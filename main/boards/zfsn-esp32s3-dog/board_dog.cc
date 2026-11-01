@@ -10,6 +10,7 @@
 #include "pet_dog.h"
 #include "ws2812_led.h"
 #include "dog_display.h"
+#include "imu_sensor.h"
 
 #include <esp_log.h>
 #include <esp_timer.h>
@@ -85,7 +86,9 @@ private:
     Button volume_up_button_;
     Button volume_down_button_;
 
+    ImuSensor imu_sensor_;
     esp_timer_handle_t explore_timer_ = nullptr;
+    esp_timer_handle_t dizzy_led_timer_ = nullptr;
     int saved_normal_volume_ = 70;
 
     void InitializeDisplayI2c() {
@@ -249,6 +252,54 @@ private:
         ESP_ERROR_CHECK(esp_timer_start_periodic(explore_timer_, 45ULL * 1000 * 1000));
     }
 
+    void InitializeImuSensor() {
+        if (!display_i2c_bus_) {
+            return;
+        }
+        if (imu_sensor_.Initialize(display_i2c_bus_)) {
+            ESP_LOGI(TAG, "IMU sensor online (%s) - Shake dizzy effect enabled", imu_sensor_.GetModelName());
+            imu_sensor_.SetOnDizzyCallback([this]() {
+                auto& app = Application::GetInstance();
+                app.Schedule([this]() {
+                    auto& dog = PetDog::GetInstance();
+                    if (!dog.GetImuShake()) {
+                        return;
+                    }
+
+                    ESP_LOGI(TAG, "IMU Shake triggered: executing dizzy effect sequence!");
+                    auto& app = Application::GetInstance();
+                    auto& led = WS2812Led::GetInstance();
+
+                    app.PlaySound(Lang::Sounds::OGG_VIBRATION);
+                    led.StartFlash("yellow", 200);
+                    dog.Dizzy();
+
+                    if (dog_display_) {
+                        dog_display_->SetEmotion("dizzy");
+                        dog_display_->ShowNotification("好晕呀~ 不要摇啦! @_@");
+                    }
+
+                    if (dizzy_led_timer_) {
+                        esp_timer_stop(dizzy_led_timer_);
+                        esp_timer_start_once(dizzy_led_timer_, 3500 * 1000);
+                    }
+                });
+            });
+
+            esp_timer_create_args_t timer_args = {
+                .callback = [](void*) {
+                    Application::GetInstance().Schedule([]() {
+                        WS2812Led::GetInstance().TurnOff();
+                    });
+                },
+                .name = "dizzy_led_off",
+            };
+            ESP_ERROR_CHECK(esp_timer_create(&timer_args, &dizzy_led_timer_));
+        } else {
+            ESP_LOGW(TAG, "No IMU detected on I2C bus (MPU6050/QMI8658). Shake detection idle.");
+        }
+    }
+
     void InitializeMcpTools() {
         auto& mcp_server = McpServer::GetInstance();
 
@@ -268,6 +319,7 @@ private:
             "play_bow: 嬉笑邀玩（下犬式前胸贴地翘臀摇尾）\n"
             "crying: 难过委屈抽泣\n"
             "angry_stomp: 生气跺脚踏步\n"
+            "dizzy: 眩晕不稳（被主人拿起来摇晃后东倒西歪、四肢发软打颤、甩头站稳）\n"
             "stretch: 伸懒腰\n"
             "scratching: 挠痒痒\n"
             "swing: 摇摆身体/开心摇晃（可指定 steps 次数和 angle 幅度）\n"
@@ -310,6 +362,8 @@ private:
                     dog.Crying();
                 } else if (action == "angry_stomp") {
                     dog.AngryStomp();
+                } else if (action == "dizzy") {
+                    dog.Dizzy();
                 } else if (action == "stretch") {
                     dog.Stretch();
                 } else if (action == "scratching") {
@@ -336,6 +390,7 @@ private:
             "- free_explore: 自由探索模式（待机时偶尔自己动一动）\n"
             "- boot_animation: 开机招手动画\n"
             "- emotion_sync: 情绪-动作-灯光三端共情联动\n"
+            "- imu_shake: 陀螺仪摇晃眩晕感知检测\n"
             "operation 可选值：get（查询）、set（设置）、toggle（切换）",
             PropertyList({
                 Property("feature", kPropertyTypeString),
@@ -361,6 +416,10 @@ private:
                     if (op == "get") result_val = dog.GetEmotionSync();
                     else if (op == "toggle") result_val = dog.ToggleEmotionSync();
                     else { dog.SetEmotionSync(enable); result_val = enable; }
+                } else if (feature == "imu_shake") {
+                    if (op == "get") result_val = dog.GetImuShake();
+                    else if (op == "toggle") result_val = dog.ToggleImuShake();
+                    else { dog.SetImuShake(enable); result_val = enable; }
                 } else {
                     return std::string("Unknown feature: ") + feature;
                 }
@@ -523,6 +582,7 @@ public:
           volume_down_button_(VOLUME_DOWN_BUTTON_GPIO) {
         InitializeDisplayI2c();
         InitializeSh1106Display();
+        InitializeImuSensor();
 
         // Trigger power-on green water-fill effect (1s then off) & initial posture
         WS2812Led::GetInstance().PlayPowerOnEffect();

@@ -29,6 +29,7 @@ enum class DogActionType {
     kPlayBow,
     kCrying,
     kAngryStomp,
+    kDizzy,
     kCustomKeyframe,
 };
 
@@ -76,6 +77,7 @@ public:
     void PlayBow();
     void Crying();
     void AngryStomp();
+    void Dizzy();
 
     // Random interactive action (for head touch long-press & idle free-explore)
     void ExecuteRandomAction();
@@ -99,6 +101,10 @@ public:
     bool GetEmotionSync() const { return emotion_sync_; }
     void SetEmotionSync(bool enable);
     bool ToggleEmotionSync();
+
+    bool GetImuShake() const { return imu_shake_; }
+    void SetImuShake(bool enable);
+    bool ToggleImuShake();
 
     bool IsBusy() const { return is_busy_; }
     DogActionType GetCurrentPosture() const { return current_posture_; }
@@ -124,6 +130,8 @@ private:
 
     // Silky Smooth Interpolation (50Hz Ease-in-out cosine trajectory)
     bool MoveTo(int target_lf, int target_rf, int target_lb, int target_rb, int duration_ms);
+    // Match the original 6.0 posture pace: roughly 500 ms settling time plus 10 ms/degree.
+    bool MoveToLegacyPace(int target_lf, int target_rf, int target_lb, int target_rb);
 
     // Internal synchronous execution routines run inside ActionTask
     void RunStand();
@@ -145,6 +153,7 @@ private:
     void RunPlayBow();
     void RunCrying();
     void RunAngryStomp();
+    void RunDizzy();
 
     static void ActionTaskTrampoline(void* arg);
     void ActionTaskLoop();
@@ -172,6 +181,7 @@ private:
     bool free_explore_ = false;
     bool boot_animation_ = true;
     bool emotion_sync_ = true;
+    bool imu_shake_ = true;
 
     ActionCallback action_callback_;
 };
