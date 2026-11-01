@@ -63,7 +63,6 @@ void PetDog::LoadSettings() {
     free_explore_ = dog_settings.GetBool("free_explore", false);
     boot_animation_ = dog_settings.GetBool("boot_animation", true);
     emotion_sync_ = dog_settings.GetBool("emotion_sync", true);
-    imu_shake_ = dog_settings.GetBool("imu_shake", true);
 }
 
 void PetDog::InitPwm() {
@@ -227,11 +226,6 @@ void PetDog::AngryStomp() {
     QueueAction({DogActionType::kAngryStomp, 1, 0, 0, 0, 0, 0, 0, true}, false);
 }
 
-void PetDog::Dizzy() {
-    // Clear existing queued actions to immediately react to being shaken
-    QueueAction({DogActionType::kDizzy, 1, 0, 90, 90, 90, 90, 0, false}, true);
-}
-
 void PetDog::Stop() {
     xEventGroupSetBits(event_group_, STOP_ACTION_BIT);
     xQueueReset(action_queue_);
@@ -389,17 +383,6 @@ bool PetDog::ToggleEmotionSync() {
     return emotion_sync_;
 }
 
-void PetDog::SetImuShake(bool enable) {
-    imu_shake_ = enable;
-    Settings settings("petdog", true);
-    settings.SetBool("imu_shake", enable);
-}
-
-bool PetDog::ToggleImuShake() {
-    SetImuShake(!imu_shake_);
-    return imu_shake_;
-}
-
 // 50Hz Cosine Ease-in-out Smooth Motion Engine
 bool PetDog::MoveTo(int target_lf, int target_rf, int target_lb, int target_rb, int duration_ms) {
     if (duration_ms <= 0) duration_ms = 20;
@@ -513,9 +496,6 @@ void PetDog::ActionTaskLoop() {
                 case DogActionType::kAngryStomp:
                     RunAngryStomp();
                     break;
-                case DogActionType::kDizzy:
-                    RunDizzy();
-                    break;
                 case DogActionType::kCustomKeyframe:
                     SetLeftFrontAngle(params.lf);
                     SetRightFrontAngle(params.rf);
@@ -545,12 +525,18 @@ void PetDog::RunStand() {
 }
 
 void PetDog::RunSitdown() {
-    if (!MoveToLegacyPace(90, 90, 30, 30)) return;
+    SetLeftFrontAngle(90);
+    SetRightFrontAngle(90);
+    SetLeftBackAngle(30);
+    SetRightBackAngle(30);
     current_posture_ = DogActionType::kSitdown;
 }
 
 void PetDog::RunSleep() {
-    if (!MoveToLegacyPace(180, 180, 0, 0)) return;
+    SetLeftFrontAngle(180);
+    SetRightFrontAngle(180);
+    SetLeftBackAngle(0);
+    SetRightBackAngle(0);
     current_posture_ = DogActionType::kSleep;
     // Wait up to 3 seconds then release servo PWM torque to prevent heating and buzzing
     if (!WaitOrStop(3000)) {
@@ -611,32 +597,6 @@ void PetDog::RunAngryStomp() {
         if (!MoveTo(90, 50, 90, 90, 180)) return;
         if (!MoveTo(90, 90, 90, 90, 140)) return;
     }
-    current_posture_ = DogActionType::kStand;
-}
-
-// Dizzy (摇晃眩晕): 3-phase comic physical sequence
-// 1. Staggering balance loss (左右东倒西歪)
-// 2. Weak-kneed collapse & dizzy tremors (四肢发软半蹲打颤)
-// 3. Head shaking recovery (甩甩脑袋站稳)
-void PetDog::RunDizzy() {
-    // Phase 1: Drunken stagger / loss of balance (左右倾斜晃晃悠悠)
-    if (!MoveTo(125, 55, 125, 55, 220)) return;
-    if (!MoveTo(55, 125, 55, 125, 240)) return;
-    if (!MoveTo(115, 65, 115, 65, 200)) return;
-    if (!MoveTo(65, 115, 65, 115, 200)) return;
-
-    // Phase 2: Knees buckling / trembling squat (四肢发软半趴打颤)
-    if (!MoveTo(115, 115, 65, 65, 280)) return;
-    for (int i = 0; i < 4; ++i) {
-        if (!MoveTo(110, 120, 60, 70, 90)) return;
-        if (!MoveTo(120, 110, 70, 60, 90)) return;
-    }
-
-    // Phase 3: Pause & head-shake recovery (甩甩脑袋站稳)
-    if (WaitOrStop(400)) return;
-    if (!MoveTo(80, 100, 85, 95, 250)) return;
-    if (!MoveTo(100, 80, 95, 85, 250)) return;
-    MoveTo(90, 90, 90, 90, 500);
     current_posture_ = DogActionType::kStand;
 }
 

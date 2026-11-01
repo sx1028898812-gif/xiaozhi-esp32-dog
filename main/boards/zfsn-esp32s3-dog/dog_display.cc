@@ -135,8 +135,6 @@ bool DogDisplay::SetEmotion(const char* emotion) {
         target_gif = "blame";
     } else if (strcmp(emotion, "contempt") == 0) {
         target_gif = "contempt";
-    } else if (strcmp(emotion, "dizzy") == 0 || strcmp(emotion, "faint") == 0) {
-        target_gif = "silly";
     } else if (strcmp(emotion, "firework") == 0 || strcmp(emotion, "celebrate") == 0) {
         ShowFirework();
         return true;
@@ -249,10 +247,6 @@ void DogDisplay::SyncWithAction(DogActionType action) {
             break;
         case DogActionType::kAngryStomp:
             SetEmotion("angry");
-            break;
-        case DogActionType::kDizzy:
-            SetEmotion("dizzy");
-            ShowNotification("好晕呀~ 不要摇啦! @_@");
             break;
         case DogActionType::kStand:
             EnterAnimatedEyes();

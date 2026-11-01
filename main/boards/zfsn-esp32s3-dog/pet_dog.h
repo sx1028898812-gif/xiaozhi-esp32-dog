@@ -29,7 +29,6 @@ enum class DogActionType {
     kPlayBow,
     kCrying,
     kAngryStomp,
-    kDizzy,
     kCustomKeyframe,
 };
 
@@ -77,7 +76,6 @@ public:
     void PlayBow();
     void Crying();
     void AngryStomp();
-    void Dizzy();
 
     // Random interactive action (for head touch long-press & idle free-explore)
     void ExecuteRandomAction();
@@ -101,10 +99,6 @@ public:
     bool GetEmotionSync() const { return emotion_sync_; }
     void SetEmotionSync(bool enable);
     bool ToggleEmotionSync();
-
-    bool GetImuShake() const { return imu_shake_; }
-    void SetImuShake(bool enable);
-    bool ToggleImuShake();
 
     bool IsBusy() const { return is_busy_; }
     DogActionType GetCurrentPosture() const { return current_posture_; }
@@ -153,7 +147,6 @@ private:
     void RunPlayBow();
     void RunCrying();
     void RunAngryStomp();
-    void RunDizzy();
 
     static void ActionTaskTrampoline(void* arg);
     void ActionTaskLoop();
@@ -181,7 +174,6 @@ private:
     bool free_explore_ = false;
     bool boot_animation_ = true;
     bool emotion_sync_ = true;
-    bool imu_shake_ = true;
 
     ActionCallback action_callback_;
 };
