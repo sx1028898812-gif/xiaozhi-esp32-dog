@@ -415,20 +415,6 @@ bool PetDog::MoveTo(int target_lf, int target_rf, int target_lb, int target_rb, 
     return true;
 }
 
-bool PetDog::MoveToLegacyPace(int target_lf, int target_rf, int target_lb, int target_rb) {
-    int max_delta = std::max({
-        std::abs(target_lf - cur_lf_),
-        std::abs(target_rf - cur_rf_),
-        std::abs(target_lb - cur_lb_),
-        std::abs(target_rb - cur_rb_),
-    });
-
-    // Avoid adding a visible pause when an action is already in the requested posture.
-    // A real posture change keeps the same overall pace as the legacy implementation.
-    int duration_ms = max_delta == 0 ? 20 : 500 + max_delta * 10;
-    return MoveTo(target_lf, target_rf, target_lb, target_rb, duration_ms);
-}
-
 void PetDog::ActionTaskTrampoline(void* arg) {
     static_cast<PetDog*>(arg)->ActionTaskLoop();
 }
@@ -520,7 +506,10 @@ void PetDog::ActionTaskLoop() {
 }
 
 void PetDog::RunStand() {
-    if (!MoveToLegacyPace(90, 90, 90, 90)) return;
+    SetLeftFrontAngle(90);
+    SetRightFrontAngle(90);
+    SetLeftBackAngle(90);
+    SetRightBackAngle(90);
     current_posture_ = DogActionType::kStand;
 }
 
@@ -777,17 +766,16 @@ void PetDog::RunSwing(int steps, int angle) {
 void PetDog::RunPetWave() {
     RunSitdown();
     // The logical joint convention is 0°=forward, 90°=down, 180°=back.
-    // Extend the left front paw forward before waving, matching the legacy 6.0 action.
-    if (!MoveTo(10, cur_rf_, cur_lb_, cur_rb_, 500)) return;
-    if (WaitOrStop(200)) return;
-    for (int count = 0; count < 5; count++) {
-        for (int i = 10; i <= 65; i += 2) {
-            SetLeftFrontAngle(i);
-            if (WaitOrStop(13)) return;
+    // Preserve the legacy right-paw timing and mirror its old backward range forward.
+    if (WaitOrStop(150)) return;
+    for (int count = 0; count < 4; count++) {
+        for (int i = 45; i >= 5; i -= 2) {
+            SetRightFrontAngle(i);
+            if (WaitOrStop(10)) return;
         }
-        for (int i = 65; i >= 10; i -= 2) {
-            SetLeftFrontAngle(i);
-            if (WaitOrStop(13)) return;
+        for (int i = 5; i <= 45; i += 2) {
+            SetRightFrontAngle(i);
+            if (WaitOrStop(10)) return;
         }
     }
     RunStand();

@@ -124,8 +124,6 @@ private:
 
     // Silky Smooth Interpolation (50Hz Ease-in-out cosine trajectory)
     bool MoveTo(int target_lf, int target_rf, int target_lb, int target_rb, int duration_ms);
-    // Match the original 6.0 posture pace: roughly 500 ms settling time plus 10 ms/degree.
-    bool MoveToLegacyPace(int target_lf, int target_rf, int target_lb, int target_rb);
 
     // Internal synchronous execution routines run inside ActionTask
     void RunStand();
