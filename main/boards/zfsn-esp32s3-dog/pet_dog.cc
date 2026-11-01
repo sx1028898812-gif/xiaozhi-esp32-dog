@@ -816,15 +816,17 @@ void PetDog::RunSwing(int steps, int angle) {
 
 void PetDog::RunPetWave() {
     RunSitdown();
-    if (!MoveTo(cur_lf_, 135, cur_lb_, cur_rb_, 500)) return;
+    // The logical joint convention is 0°=forward, 90°=down, 180°=back.
+    // Extend the left front paw forward before waving, matching the legacy 6.0 action.
+    if (!MoveTo(10, cur_rf_, cur_lb_, cur_rb_, 500)) return;
     if (WaitOrStop(200)) return;
     for (int count = 0; count < 5; count++) {
-        for (int i = 135; i <= 175; i += 2) {
-            SetRightFrontAngle(i);
+        for (int i = 10; i <= 65; i += 2) {
+            SetLeftFrontAngle(i);
             if (WaitOrStop(13)) return;
         }
-        for (int i = 175; i >= 135; i -= 2) {
-            SetRightFrontAngle(i);
+        for (int i = 65; i >= 10; i -= 2) {
+            SetLeftFrontAngle(i);
             if (WaitOrStop(13)) return;
         }
     }
