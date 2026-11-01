@@ -506,10 +506,7 @@ void PetDog::ActionTaskLoop() {
 }
 
 void PetDog::RunStand() {
-    SetLeftFrontAngle(90);
-    SetRightFrontAngle(90);
-    SetLeftBackAngle(90);
-    SetRightBackAngle(90);
+    if (!MoveTo(90, 90, 90, 90, 1000)) return;
     current_posture_ = DogActionType::kStand;
 }
 
