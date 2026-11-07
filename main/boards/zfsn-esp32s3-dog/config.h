@@ -28,8 +28,8 @@
 #define DISPLAY_SCL_PIN GPIO_NUM_42
 #define DISPLAY_WIDTH   128
 #define DISPLAY_HEIGHT  64
-#define DISPLAY_MIRROR_X true
-#define DISPLAY_MIRROR_Y true
+#define DISPLAY_MIRROR_X false
+#define DISPLAY_MIRROR_Y false
 #define SH1106
 
 // Dual WS2812 RGB LED Strips (Left & Right 8 LEDs each)
