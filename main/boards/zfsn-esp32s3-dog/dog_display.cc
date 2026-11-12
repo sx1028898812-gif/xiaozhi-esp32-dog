@@ -237,6 +237,8 @@ void DogDisplay::SyncWithAction(DogActionType action) {
         case DogActionType::kPlayBow:
         case DogActionType::kSwing:
         case DogActionType::kJump:
+        case DogActionType::kBow:
+        case DogActionType::kTippyTaps:
             SetEmotion("happy");
             break;
         case DogActionType::kPetWave:
@@ -247,6 +249,21 @@ void DogDisplay::SyncWithAction(DogActionType action) {
             break;
         case DogActionType::kAngryStomp:
             SetEmotion("angry");
+            break;
+        case DogActionType::kPushUp:
+            SetEmotion("serious");
+            break;
+        case DogActionType::kActCute:
+            SetEmotion("silly");
+            break;
+        case DogActionType::kPee:
+            SetEmotion("mock");
+            break;
+        case DogActionType::kHeadTilt:
+            SetEmotion("doubt");
+            break;
+        case DogActionType::kMoonwalk:
+            SetEmotion("quirky");
             break;
         case DogActionType::kStand:
             EnterAnimatedEyes();

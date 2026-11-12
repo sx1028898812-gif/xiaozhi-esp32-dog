@@ -226,6 +226,34 @@ void PetDog::AngryStomp() {
     QueueAction({DogActionType::kAngryStomp, 1, 0, 0, 0, 0, 0, 0, true}, false);
 }
 
+void PetDog::PushUp(int count) {
+    QueueAction({DogActionType::kPushUp, std::clamp(count, 1, 10), 0, 0, 0, 0, 0, 0, true}, false);
+}
+
+void PetDog::ActCute() {
+    QueueAction({DogActionType::kActCute, 1, 0, 0, 0, 0, 0, 0, true}, false);
+}
+
+void PetDog::Pee() {
+    QueueAction({DogActionType::kPee, 1, 0, 0, 0, 0, 0, 0, true}, false);
+}
+
+void PetDog::HeadTilt() {
+    QueueAction({DogActionType::kHeadTilt, 1, 0, 0, 0, 0, 0, 0, true}, false);
+}
+
+void PetDog::Moonwalk(int steps) {
+    QueueAction({DogActionType::kMoonwalk, std::clamp(steps, 1, 10), 0, 0, 0, 0, 0, 0, true}, false);
+}
+
+void PetDog::Bow() {
+    QueueAction({DogActionType::kBow, 1, 0, 0, 0, 0, 0, 0, true}, false);
+}
+
+void PetDog::TippyTaps() {
+    QueueAction({DogActionType::kTippyTaps, 1, 0, 0, 0, 0, 0, 0, true}, false);
+}
+
 void PetDog::Stop() {
     xEventGroupSetBits(event_group_, STOP_ACTION_BIT);
     xQueueReset(action_queue_);
@@ -241,8 +269,13 @@ void PetDog::ExecuteRandomAction() {
         DogActionType::kPlayBow,
         DogActionType::kSurprised,
         DogActionType::kJump,
-        DogActionType::kSitdown,
-        DogActionType::kWalkForward,
+        DogActionType::kPushUp,
+        DogActionType::kActCute,
+        DogActionType::kPee,
+        DogActionType::kHeadTilt,
+        DogActionType::kMoonwalk,
+        DogActionType::kBow,
+        DogActionType::kTippyTaps,
     };
     uint32_t idx = esp_random() % (sizeof(kRandomActions) / sizeof(kRandomActions[0]));
     switch (kRandomActions[idx]) {
@@ -253,8 +286,13 @@ void PetDog::ExecuteRandomAction() {
         case DogActionType::kPlayBow:     PlayBow(); break;
         case DogActionType::kSurprised:   Surprised(); break;
         case DogActionType::kJump:        Jump(); break;
-        case DogActionType::kSitdown:     Sitdown(); break;
-        case DogActionType::kWalkForward: WalkForward(2); break;
+        case DogActionType::kPushUp:      PushUp(3); break;
+        case DogActionType::kActCute:     ActCute(); break;
+        case DogActionType::kPee:         Pee(); break;
+        case DogActionType::kHeadTilt:    HeadTilt(); break;
+        case DogActionType::kMoonwalk:    Moonwalk(3); break;
+        case DogActionType::kBow:         Bow(); break;
+        case DogActionType::kTippyTaps:   TippyTaps(); break;
         default:                          Swing(4, 30); break;
     }
 }
@@ -482,6 +520,27 @@ void PetDog::ActionTaskLoop() {
                 case DogActionType::kAngryStomp:
                     RunAngryStomp();
                     break;
+                case DogActionType::kPushUp:
+                    RunPushUp(params.steps);
+                    break;
+                case DogActionType::kActCute:
+                    RunActCute();
+                    break;
+                case DogActionType::kPee:
+                    RunPee();
+                    break;
+                case DogActionType::kHeadTilt:
+                    RunHeadTilt();
+                    break;
+                case DogActionType::kMoonwalk:
+                    RunMoonwalk(params.steps);
+                    break;
+                case DogActionType::kBow:
+                    RunBow();
+                    break;
+                case DogActionType::kTippyTaps:
+                    RunTippyTaps();
+                    break;
                 case DogActionType::kCustomKeyframe:
                     SetLeftFrontAngle(params.lf);
                     SetRightFrontAngle(params.rf);
@@ -583,6 +642,151 @@ void PetDog::RunAngryStomp() {
         if (!MoveTo(90, 50, 90, 90, 180)) return;
         if (!MoveTo(90, 90, 90, 90, 140)) return;
     }
+    current_posture_ = DogActionType::kStand;
+}
+
+// Push Up (猛男俯卧撑): Hind legs braced, front legs smoothly press down & up with realistic cadence
+void PetDog::RunPushUp(int count) {
+    // Smoothly lower into plank/brace stance first
+    if (!MoveTo(85, 85, 55, 55, 650)) return;
+    if (WaitOrStop(250)) return;
+
+    int reps = std::clamp(count, 1, 10);
+    for (int i = 0; i < reps; ++i) {
+        // Controlled descent under gravity
+        if (!MoveTo(150, 150, 50, 50, 550)) return;
+        if (WaitOrStop(180)) return;
+        // Smooth power push back up
+        if (!MoveTo(80, 80, 58, 58, 600)) return;
+        if (WaitOrStop(220)) return;
+    }
+
+    // Smooth recovery to neutral stand
+    MoveTo(90, 90, 90, 90, 850);
+    current_posture_ = DogActionType::kStand;
+}
+
+// Act Cute (撒娇求抱抱): Smooth sit -> gentle alternating upper-body sway -> front paws reach out
+void PetDog::RunActCute() {
+    // 1. Gently sit down
+    if (!MoveTo(90, 90, 30, 30, 650)) return;
+    if (WaitOrStop(250)) return;
+
+    // 2. Softly sway shoulders left and right (3 cycles)
+    for (int i = 0; i < 3; ++i) {
+        if (!MoveTo(60, 115, 30, 35, 480)) return;
+        if (!MoveTo(115, 60, 35, 30, 480)) return;
+    }
+
+    // 3. Reach both front paws forward pleadingly ("hug me!")
+    if (!MoveTo(45, 45, 30, 30, 550)) return;
+    if (WaitOrStop(600)) return;
+
+    // 4. Gentle little paw flutter
+    if (!MoveTo(35, 55, 30, 30, 360)) return;
+    if (!MoveTo(55, 35, 30, 30, 360)) return;
+    if (WaitOrStop(250)) return;
+
+    // 5. Smoothly rise back to standing
+    MoveTo(90, 90, 90, 90, 850);
+    current_posture_ = DogActionType::kStand;
+}
+
+// Pee (搞笑翘腿标记领地): Shift center of gravity first -> slowly lift right hind leg -> gentle shake -> lower
+void PetDog::RunPee() {
+    // 1. Shift weight onto left legs & right front leg so the body stays balanced
+    if (!MoveTo(82, 78, 72, 95, 600)) return;
+    if (WaitOrStop(250)) return;
+
+    // 2. Slowly and smoothly raise the right hind leg high backward
+    if (!MoveTo(82, 78, 70, 172, 680)) return;
+    if (WaitOrStop(400)) return;
+
+    // 3. Three realistic, unhurried shakes at the top
+    for (int i = 0; i < 3; ++i) {
+        if (!MoveTo(82, 78, 70, 152, 340)) return;
+        if (!MoveTo(82, 78, 70, 172, 340)) return;
+    }
+    if (WaitOrStop(300)) return;
+
+    // 4. Slowly lower the leg and restore center of gravity
+    MoveTo(90, 90, 90, 90, 800);
+    current_posture_ = DogActionType::kStand;
+}
+
+// Head Tilt (好奇歪头杀): Smooth lateral body lean left -> pause & ponder -> lean right -> pause -> recover
+void PetDog::RunHeadTilt() {
+    // 1. Lean left side down, right side up (curious tilt left)
+    if (!MoveTo(122, 68, 118, 72, 620)) return;
+    if (WaitOrStop(700)) return;
+
+    // 2. Smoothly transition across center to tilt right
+    if (!MoveTo(68, 122, 72, 118, 720)) return;
+    if (WaitOrStop(700)) return;
+
+    // 3. Slight second tilt left for extra expressiveness
+    if (!MoveTo(115, 75, 112, 78, 600)) return;
+    if (WaitOrStop(500)) return;
+
+    // 4. Smoothly return to upright stand
+    MoveTo(90, 90, 90, 90, 680);
+    current_posture_ = DogActionType::kStand;
+}
+
+// Moonwalk (太空步/机械滑步): Fluid 4-phase wave gait with smooth weight transfer
+void PetDog::RunMoonwalk(int steps) {
+    if (!MoveTo(90, 90, 90, 90, 500)) return;
+    int count = std::clamp(steps, 1, 10);
+
+    for (int s = 0; s < count; ++s) {
+        // Phase 1: Left front glides back while right hind slides forward
+        if (!MoveTo(125, 75, 70, 120, 420)) return;
+        // Phase 2: Body wave crest through mid-stance
+        if (!MoveTo(105, 105, 75, 75, 360)) return;
+        // Phase 3: Right front glides back while left hind slides forward
+        if (!MoveTo(75, 125, 120, 70, 420)) return;
+        // Phase 4: Body wave trough back to neutral
+        if (!MoveTo(75, 75, 105, 105, 360)) return;
+    }
+
+    MoveTo(90, 90, 90, 90, 700);
+    current_posture_ = DogActionType::kStand;
+}
+
+// Bow (恭敬鞠躬/拜年作揖): Deep respectful front bow -> gentle nod twice -> dignified rise
+void PetDog::RunBow() {
+    // 1. Smoothly fold front legs back to bow chest low while hind legs stay upright
+    if (!MoveTo(152, 152, 85, 85, 720)) return;
+    if (WaitOrStop(400)) return;
+
+    // 2. Two polite, unhurried nods at the bottom of the bow
+    for (int i = 0; i < 2; ++i) {
+        if (!MoveTo(135, 135, 85, 85, 380)) return;
+        if (!MoveTo(155, 155, 85, 85, 380)) return;
+    }
+    if (WaitOrStop(350)) return;
+
+    // 3. Dignified, smooth rise back to standing
+    MoveTo(90, 90, 90, 90, 850);
+    current_posture_ = DogActionType::kStand;
+}
+
+// Tippy Taps (兴奋踏步): Rhythmic, elastic diagonal prancing steps followed by a happy little hop
+void PetDog::RunTippyTaps() {
+    // 1. Elastic diagonal prancing (4 cycles, 260ms per beat so servos move smoothly)
+    for (int i = 0; i < 4; ++i) {
+        if (!MoveTo(72, 108, 108, 72, 260)) return;
+        if (!MoveTo(108, 72, 72, 108, 260)) return;
+    }
+
+    // 2. Settle briefly then do a soft happy mini-hop
+    if (!MoveTo(70, 70, 60, 60, 320)) return;
+    if (WaitOrStop(150)) return;
+    if (!MoveTo(125, 125, 120, 120, 300)) return;
+    if (WaitOrStop(200)) return;
+
+    // 3. Smooth landing back to stand
+    MoveTo(90, 90, 90, 90, 750);
     current_posture_ = DogActionType::kStand;
 }
 

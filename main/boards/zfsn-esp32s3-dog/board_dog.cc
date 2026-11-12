@@ -252,7 +252,7 @@ private:
     void InitializeMcpTools() {
         auto& mcp_server = McpServer::GetInstance();
 
-        // 1. Core 13-Action Tool (100% compatible with seller 6.0 schema + voiceprint awareness)
+        // 1. Core Action Tool (compatible with seller 6.0 schema + 7 new silky-smooth fun actions)
         mcp_server.AddTool(
             "self.dog.action",
             "机器狗动作控制。支持以下动作：\n"
@@ -268,13 +268,20 @@ private:
             "play_bow: 嬉笑邀玩（下犬式前胸贴地翘臀摇尾）\n"
             "crying: 难过委屈抽泣\n"
             "angry_stomp: 生气跺脚踏步\n"
+            "push_up: 俯卧撑锻炼/秀肌肉（可指定 steps 次数，默认4次）\n"
+            "act_cute: 撒娇卖萌/求抱抱（坐下左右歪头扭动上半身并伸爪）\n"
+            "pee: 搞笑翘后腿尿尿/标记领地\n"
+            "head_tilt: 好奇歪头杀/思考打量（身体左右侧倾歪头配合疑惑眼神）\n"
+            "moonwalk: 太空步/机械滑步跳舞（可指定 steps 步数，默认4步）\n"
+            "bow: 恭敬鞠躬/拜年作揖/致谢（前胸深鞠躬并点首两次）\n"
+            "tippy_taps: 兴奋小碎步/开心哒哒踏步接小跳\n"
             "stretch: 伸懒腰\n"
             "scratching: 挠痒痒\n"
             "swing: 摇摆身体/开心摇晃（可指定 steps 次数和 angle 幅度）\n"
             "petwave: 招手打招呼/握手/作揖\n"
             "jump: 欢快跳跃\n"
             "stop: 立即停止当前动作并恢复站立。\n"
-            "提示：当通过声纹识别出说话人是'小主人'时，打招呼可主动搭配 petwave 或 swing；识别出'爸爸'时可搭配 stand 或 petwave。",
+            "提示：当通过声纹识别出说话人是'小主人'时，打招呼可主动搭配 act_cute、tippy_taps、petwave 或 swing；识别出'爸爸'时可搭配 bow、stand 或 petwave。",
             PropertyList({
                 Property("action", kPropertyTypeString),
                 Property("steps", kPropertyTypeInteger, 4, 1, 100),
@@ -310,6 +317,20 @@ private:
                     dog.Crying();
                 } else if (action == "angry_stomp") {
                     dog.AngryStomp();
+                } else if (action == "push_up" || action == "pushup") {
+                    dog.PushUp(steps);
+                } else if (action == "act_cute" || action == "cute") {
+                    dog.ActCute();
+                } else if (action == "pee") {
+                    dog.Pee();
+                } else if (action == "head_tilt" || action == "tilt") {
+                    dog.HeadTilt();
+                } else if (action == "moonwalk" || action == "dance") {
+                    dog.Moonwalk(steps);
+                } else if (action == "bow" || action == "thank") {
+                    dog.Bow();
+                } else if (action == "tippy_taps" || action == "tap") {
+                    dog.TippyTaps();
                 } else if (action == "stretch") {
                     dog.Stretch();
                 } else if (action == "scratching") {

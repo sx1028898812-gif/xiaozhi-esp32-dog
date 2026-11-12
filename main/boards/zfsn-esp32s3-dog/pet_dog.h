@@ -29,6 +29,13 @@ enum class DogActionType {
     kPlayBow,
     kCrying,
     kAngryStomp,
+    kPushUp,
+    kActCute,
+    kPee,
+    kHeadTilt,
+    kMoonwalk,
+    kBow,
+    kTippyTaps,
     kCustomKeyframe,
 };
 
@@ -70,12 +77,19 @@ public:
     void Jump();
     void Stop();
 
-    // New 6.0 Silky Smooth Emotion Actions (Cosine Eased)
+    // New 6.0 Silky Smooth Emotion & Fun Actions (Cosine Eased)
     void Surprised();
     void Sleepy();
     void PlayBow();
     void Crying();
     void AngryStomp();
+    void PushUp(int count = 4);
+    void ActCute();
+    void Pee();
+    void HeadTilt();
+    void Moonwalk(int steps = 4);
+    void Bow();
+    void TippyTaps();
 
     // Random interactive action (for head touch long-press & idle free-explore)
     void ExecuteRandomAction();
@@ -139,12 +153,19 @@ private:
     void RunPetWave();
     void RunJump();
 
-    // New 6.0 Silky Smooth Emotion Handlers
+    // New 6.0 Silky Smooth Emotion & Fun Handlers
     void RunSurprised();
     void RunSleepy();
     void RunPlayBow();
     void RunCrying();
     void RunAngryStomp();
+    void RunPushUp(int count);
+    void RunActCute();
+    void RunPee();
+    void RunHeadTilt();
+    void RunMoonwalk(int steps);
+    void RunBow();
+    void RunTippyTaps();
 
     static void ActionTaskTrampoline(void* arg);
     void ActionTaskLoop();
